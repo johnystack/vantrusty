@@ -136,9 +136,9 @@ const MyInvestmentsPage = () => {
 
   const calculateProgress = (startDate: string, endDate: string) => {
     if (!startDate || !endDate) return 0;
-    const start = new date(startDate).getTime();
-    const end = new date(endDate).getTime();
-    const now = new date().getTime();
+    const start = new Date(startDate).getTime();
+    const end = new Date(endDate).getTime();
+    const now = new Date().getTime();
 
     if (now >= end) return 100;
     if (now <= start) return 0;

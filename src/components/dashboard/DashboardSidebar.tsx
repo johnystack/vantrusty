@@ -54,7 +54,7 @@ const DashboardSidebar = () => {
 
     fetchUserRole();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         supabase.from('profiles').select('role').eq('id', session.user.id).single()
           .then(({ data: profileData, error }) => {
@@ -71,7 +71,7 @@ const DashboardSidebar = () => {
     });
 
     return () => {
-      authListener.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
