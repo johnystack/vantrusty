@@ -19,7 +19,7 @@ import InvestNow from "./pages/InvestNow";
 
 import Withdraw from "./pages/Withdraw";
 import Referrals from "./pages/Referrals";
-import Wallet from "./pages/Wallet";
+import MyInvestment from "./pages/MyInvestment";
 import Support from "./pages/Support";
 import Settings from "./pages/Settings";
 
@@ -137,7 +137,7 @@ const App = () => {
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/wallet" element={<Wallet />} />
+              <Route path="/dashboard/myinvestment" element={<MyInvestment />} />
               <Route path="/dashboard/investments" element={<InvestNow />} />
               <Route path="/dashboard/withdraw" element={<Withdraw />} />
               <Route path="/dashboard/referrals" element={<Referrals />} />

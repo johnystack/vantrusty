@@ -18,7 +18,7 @@ import { supabase } from "@/lib/supabaseClient"; // Import supabase
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: DollarSign, label: "My Investments", path: "/dashboard/wallet" },
+  { icon: DollarSign, label: "My Investments", path: "/dashboard/myinvestment" },
   { icon: TrendingUp, label: "Invest Now", path: "/dashboard/investments" },
   { icon: Upload, label: "Withdraw", path: "/dashboard/withdraw" },
   { icon: Users, label: "Referrals", path: "/dashboard/referrals" },

@@ -15,7 +15,7 @@ interface Investment {
   id: number;
   user_id: string;
   amount: number;
-  status: 'pending' | 'approved' | 'denied' | 'matured' | 'withdrawn' | 'reinvested';
+  status: 'pending' | 'active' | 'denied' | 'matured' | 'withdrawn' | 'reinvested';
   created_at: string;
   start_date: string;
   end_date: string;
@@ -80,7 +80,7 @@ const AdminInvestmentManagement = () => {
 
       const { error } = await supabase
         .from('investments')
-        .update({ status: 'approved', start_date: new Date().toISOString(), end_date: new Date(Date.now() + (investmentToConfirm?.plan_duration_days || 0) * 24 * 60 * 60 * 1000).toISOString() })
+        .update({ status: 'active', start_date: new Date().toISOString(), end_date: new Date(Date.now() + (investmentToConfirm?.plan_duration_days || 0) * 24 * 60 * 60 * 1000).toISOString() })
         .eq('id', id);
 
       if (error) throw error;
@@ -169,12 +169,12 @@ const AdminInvestmentManagement = () => {
     inv.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status: 'pending' | 'approved' | 'denied' | 'matured' | 'withdrawn' | 'reinvested') => {
+  const getStatusBadge = (status: 'pending' | 'active' | 'denied' | 'matured' | 'withdrawn' | 'reinvested') => {
     switch (status) {
       case "pending":
         return <Badge className="bg-warning/20 text-warning border-warning/30">Pending</Badge>;
-      case "approved":
-        return <Badge className="bg-success/20 text-success border-success/30">Approved</Badge>;
+      case "active":
+        return <Badge className="bg-success/20 text-success border-success/30">Active</Badge>;
       case "denied":
         return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Denied</Badge>;
       case "matured":
@@ -189,8 +189,8 @@ const AdminInvestmentManagement = () => {
   };
   
   const calculateReturns = (investment: Investment): number => {
-    // Only calculate for approved/active/matured investments for admin view
-    if (investment.status !== 'approved' && investment.status !== 'matured') return 0; 
+    // Only calculate for active/matured investments for admin view
+    if (investment.status !== 'active' && investment.status !== 'matured') return 0; 
     const dailyRate = investment.plan_daily_interest_rate / 100;
     const durationDays = investment.plan_duration_days;
     
@@ -198,7 +198,7 @@ const AdminInvestmentManagement = () => {
     return investment.amount + interest;
   };
   
-  const calculateProgress = (startDate: string, endDate: string, status: 'pending' | 'approved' | 'denied' | 'matured' | 'withdrawn' | 'reinvested') => {
+  const calculateProgress = (startDate: string, endDate: string, status: 'pending' | 'active' | 'denied' | 'matured' | 'withdrawn' | 'reinvested') => {
     if (status === 'pending' || !startDate || !endDate) return 0;
     const start = new Date(startDate).getTime();
     const end = new Date(endDate).getTime();
