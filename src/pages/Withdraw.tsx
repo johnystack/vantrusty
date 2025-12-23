@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Profile {
-  balance: number;
+  available_balance: number;
 }
 
 const Withdraw = () => {
@@ -29,7 +29,7 @@ const Withdraw = () => {
       if (user) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('balance')
+          .select('available_balance')
           .eq('id', user.id)
           .single();
         
@@ -57,7 +57,7 @@ const Withdraw = () => {
       toast.error("Invalid Amount", { description: "Please enter a valid, positive amount." });
       return;
     }
-    if (!profile || withdrawalAmount > profile.balance) {
+    if (!profile || withdrawalAmount > profile.available_balance) {
       toast.error("Insufficient Balance", { description: "You cannot withdraw more than your available balance." });
       return;
     }
@@ -99,7 +99,7 @@ const Withdraw = () => {
                     <Skeleton className="h-9 w-48 mt-1" />
                   ) : (
                     <p className="text-3xl font-display font-bold text-foreground">
-                      {formatCurrency(profile?.balance)}
+                      {formatCurrency(profile?.available_balance)}
                     </p>
                   )}
                 </div>
@@ -138,7 +138,7 @@ const Withdraw = () => {
                     <button 
                       type="button"
                       className="text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
-                      onClick={() => profile && setAmount(profile.balance.toString())}
+                      onClick={() => profile && setAmount(profile.available_balance.toString())}
                       disabled={isPageLoading || !profile}
                     >
                       Withdraw Maximum

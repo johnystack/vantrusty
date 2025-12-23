@@ -85,7 +85,7 @@ const AdminInvestmentManagement = () => {
 
       if (error) throw error;
       
-      const { error: balanceError } = await supabase.rpc('update_user_balance', {
+      const { error: balanceError } = await supabase.rpc('update_user_available_balance', {
         p_user_id: investmentToConfirm.user_id,
         p_amount: investmentToConfirm.amount,
       });

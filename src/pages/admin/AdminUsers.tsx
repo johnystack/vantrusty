@@ -21,30 +21,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 
-const users = [
-  { id: 1, name: "John Doe", email: "john.doe@email.com", balance: "$45,230", investments: "$32,500", bonus: "$0", status: "active", kyc: "verified", joined: "2024-01-15" },
-  { id: 2, name: "Jane Smith", email: "jane.smith@email.com", balance: "$28,400", investments: "$15,000", bonus: "$0", status: "active", kyc: "verified", joined: "2024-02-20" },
-  { id: 3, name: "Mike Wilson", email: "mike.wilson@email.com", balance: "$12,850", investments: "$8,500", bonus: "$0", status: "suspended", kyc: "pending", joined: "2024-03-10" },
-  { id: 4, name: "Sarah Jones", email: "sarah.jones@email.com", balance: "$67,200", investments: "$45,000", bonus: "$0", status: "active", kyc: "verified", joined: "2024-01-05" },
-  { id: 5, name: "Alex Brown", email: "alex.brown@email.com", balance: "$5,200", investments: "$2,500", bonus: "$0", status: "active", kyc: "rejected", joined: "2024-04-01" },
-];
-
 const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUser, setSelectedUser] = useState<(typeof users)[0] | null>(
+  const [selectedUser, setSelectedUser] = useState<any | null>(
     null
   );
   const [isBonusDialogOpen, setIsBonusDialogOpen] = useState(false);
   const [
     selectedUserForBonus,
     setSelectedUserForBonus,
-  ] = useState<(typeof users)[0] | null>(null);
+  ] = useState<any | null>(null);
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers: any[] = [];
+
 
   const handleAction = (action: string, userId: number) => {
     const user = users.find((u) => u.id === userId);
@@ -115,7 +104,7 @@ setIsBonusDialogOpen(true);
                         User
                       </th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden md:table-cell">
-                        Balance
+                        Available Balance
                       </th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden lg:table-cell">
                         Investments
@@ -149,7 +138,7 @@ setIsBonusDialogOpen(true);
                         </td>
                         <td className="py-3 px-2 hidden md:table-cell">
                           <span className="text-sm font-medium text-foreground">
-                            {user.balance}
+                            {user.available_balance}
                           </span>
                         </td>
                         <td className="py-3 px-2 hidden lg:table-cell">
@@ -265,10 +254,10 @@ setIsBonusDialogOpen(true);
                     </div>
                     <div>
                       <label className="text-sm text-muted-foreground">
-                        Balance
+                        Available Balance
                       </label>
                       <p className="font-medium text-foreground">
-                        {selectedUser.balance}
+                        {selectedUser.available_balance}
                       </p>
                     </div>
                     <div>

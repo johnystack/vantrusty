@@ -41,7 +41,7 @@ interface UserInvestment {
 }
 
 interface Profile {
-  balance: number;
+  available_balance: number;
 }
 
 interface Cryptocurrency {
@@ -68,7 +68,7 @@ const InvestNow = () => {
   const selectedCryptoDetails = cryptocurrencies.find(crypto => String(crypto.id) === selectedCryptoId);
 
   const depositButtonDisabled = isSubmitting || !proofOfPayment || !selectedCryptoId || !selectedPlan;
-  const balanceButtonDisabled = isSubmitting || !selectedPlan || !investAmount;
+  const balanceButtonDisabled = isSubmitting || !selectedPlan || !investAmount || (profile && parseFloat(investAmount) > profile.available_balance);
 
   useEffect(() => {
     fetchData();
@@ -80,12 +80,11 @@ const InvestNow = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
-      const [plansRes, profileRes, cryptoRes] = await Promise.all([
-        supabase.from('investment_plans').select('*').order('min_amount'),
-        supabase.from('profiles').select('balance').eq('id', user.id).maybeSingle(),
-        supabase.from('cryptocurrencies').select('*').eq('enabled', true),
-      ]);
-
+              const [plansRes, profileRes, cryptoRes] = await Promise.all([
+                supabase.from('investment_plans').select('*').order('min_amount'),
+                supabase.from('profiles').select('available_balance').eq('id', user.id).maybeSingle(),
+                supabase.from('cryptocurrencies').select('*').eq('enabled', true),
+              ]);
       if (plansRes.error) throw plansRes.error;
       if (profileRes.error) throw profileRes.error;
       if (cryptoRes.error) throw cryptoRes.error;
@@ -112,7 +111,7 @@ const InvestNow = () => {
       toast.error("Invalid Amount", { description: "Please enter a valid positive investment amount." });
       return;
     }
-    if (!profile || amount > profile.balance) {
+    if (!profile || amount > profile.available_balance) {
       toast.error("Insufficient Balance", { description: "You do not have enough funds in your wallet." });
       return;
     }
@@ -126,7 +125,7 @@ const InvestNow = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated.");
 
-      const newBalance = profile.balance - amount;
+      const newAvailableBalance = profile.available_balance - amount;
 
       // 1. Create active investment entry
       const { error: investmentError } = await supabase.from('investments').insert({
@@ -139,8 +138,8 @@ const InvestNow = () => {
       });
       if (investmentError) throw investmentError;
 
-      // 2. Update user's balance
-      const { error: profileError } = await supabase.from('profiles').update({ balance: newBalance }).eq('id', user.id);
+      // 2. Update user's available_balance
+      const { error: profileError } = await supabase.from('profiles').update({ available_balance: newAvailableBalance }).eq('id', user.id);
       if (profileError) throw profileError;
 
       toast.success("Investment Successful!", { description: `Your investment of ${formatCurrency(amount)} in the ${selectedPlan.name} plan is now active.` });
@@ -295,7 +294,7 @@ const InvestNow = () => {
                   <TrendingUp className="w-5 h-5 text-primary" />
                   Invest in {selectedPlan?.name || "a Plan"}
                 </CardTitle>
-                <CardDescription>Your available balance: {formatCurrency(profile?.balance || 0)}</CardDescription>
+                <CardDescription>Your available balance: {formatCurrency(profile?.available_balance || 0)}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Tabs value={investmentMethod} onValueChange={setInvestmentMethod}>

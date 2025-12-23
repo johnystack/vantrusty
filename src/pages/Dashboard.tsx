@@ -11,36 +11,64 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface Profile {
   full_name: string;
   username: string;
-  balance: number;
+  available_balance: number;
   referral_bonus: number;
 }
 
 const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [totalInvested, setTotalInvested] = useState(0);
+  const [totalEarnings, setTotalEarnings] = useState(0);
+  const [activeInvestmentsCount, setActiveInvestmentsCount] = useState(0);
+  const [referralCount, setReferralCount] = useState(0);
+
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchDashboardData = async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
 
-      if (user) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        // Fetch profile, investments, and referral count in parallel
+        const [profileRes, investmentsRes, referralsRes] = await Promise.all([
+          supabase.from('profiles').select('full_name, username, available_balance, referral_bonus').eq('id', user.id).single(),
+          supabase.from('investment_details').select('amount, status, plan_daily_interest_rate, plan_duration_days').eq('user_id', user.id),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
+        ]);
 
-        if (error) {
-          console.error("Error fetching profile data:", error);
-        } else {
-          setProfile(data);
-        }
+        if (profileRes.error) throw profileRes.error;
+        if (investmentsRes.error) throw investmentsRes.error;
+        if (referralsRes.error) throw referralsRes.error;
+        
+        setProfile(profileRes.data);
+        setReferralCount(referralsRes.count || 0);
+
+        const investments = investmentsRes.data || [];
+
+        // Calculate stats from investments
+        const totalInvestedCalc = investments
+          .filter(inv => inv.status !== 'cancelled')
+          .reduce((acc, inv) => acc + inv.amount, 0);
+        setTotalInvested(totalInvestedCalc);
+
+        const totalEarningsCalc = investments
+          .filter(inv => inv.status === 'completed')
+          .reduce((acc, inv) => acc + (inv.amount * (inv.plan_daily_interest_rate / 100) * inv.plan_duration_days), 0);
+        setTotalEarnings(totalEarningsCalc);
+
+        const activeCount = investments.filter(inv => inv.status === 'active').length;
+        setActiveInvestmentsCount(activeCount);
+
+      } catch (error: any) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    fetchProfile();
+    fetchDashboardData();
   }, []);
 
   const formatCurrency = (amount: number | undefined) => {
@@ -71,31 +99,27 @@ const Dashboard = () => {
             ) : (
               <>
                 <StatCard
-                  title="Wallet Balance"
-                  value={formatCurrency(profile?.balance)}
-                  change="+0.0% this month"
-                  changeType="neutral"
+                  title="Available Balance"
+                  value={formatCurrency(profile?.available_balance)}
                   icon={Wallet}
                 />
                 <StatCard
-                  title="Active Investments"
-                  value="$0.00"
-                  change="0 active plans"
+                  title="Total Invested"
+                  value={formatCurrency(totalInvested)}
+                  change={`${activeInvestmentsCount} active plans`}
                   changeType="neutral"
                   icon={TrendingUp}
                   iconColor="bg-gradient-accent"
                 />
                 <StatCard
                   title="Total Earnings"
-                  value="$0.00"
-                  change="+$0.00 this week"
-                  changeType="neutral"
+                  value={formatCurrency(totalEarnings)}
                   icon={DollarSign}
                 />
                 <StatCard
                   title="Referral Bonus"
                   value={formatCurrency(profile?.referral_bonus)}
-                  change="0 referrals"
+                  change={`${referralCount} referrals`}
                   changeType="neutral"
                   icon={Users}
                 />
