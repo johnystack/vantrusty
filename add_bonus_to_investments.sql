@@ -1,0 +1,2 @@
+ALTER TABLE public.investments
+ADD COLUMN bonus NUMERIC NOT NULL DEFAULT 0;
