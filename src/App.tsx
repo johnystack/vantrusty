@@ -54,6 +54,17 @@ const ProtectedRoute = ({ session, userRole, allowedRoles, children }: { session
   return <>{children}</>;
 };
 
+const SignupRoute = ({ session }: { session: Session | null }) => {
+  const [searchParams] = useSearchParams();
+  const hasRef = searchParams.has('ref');
+
+  if (session && !hasRef) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Signup />;
+};
+
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -126,7 +137,7 @@ const App = () => {
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/dashboard" />} />
-            <Route path="/signup" element={!session ? <Signup /> : <Navigate to="/dashboard" />} />
+            <Route path="/signup" element={<SignupRoute session={session} />} />
 
             {/* Protected Dashboard Routes */}
             <Route
