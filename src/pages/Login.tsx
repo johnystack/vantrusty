@@ -53,17 +53,6 @@ const Login = () => {
         
         <div className="relative z-10 hidden lg:flex flex-col justify-end h-full p-12">
           <div className="max-w-md">
-            <div className="glass rounded-2xl p-5 mb-6 animate-fade-in">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-success/20 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-success" />
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Your Portfolio Today</div>
-                  <div className="text-2xl font-bold text-success">+$2,450.00</div>
-                </div>
-              </div>
-            </div>
             
             <h2 className="text-3xl font-display font-bold text-foreground mb-4">
               Welcome Back to VanTrusty
