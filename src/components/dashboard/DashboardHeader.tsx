@@ -17,9 +17,10 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 interface DashboardHeaderProps {
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
 }
 
-const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
+const DashboardHeader = ({ title, subtitle, action }: DashboardHeaderProps) => {
   const [profile, setProfile] = useState<{ full_name: string; username: string } | null>(null);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const navigate = useNavigate();
@@ -67,6 +68,7 @@ const DashboardHeader = ({ title, subtitle }: DashboardHeaderProps) => {
       </div>
 
       <div className="flex items-center gap-4">
+        {action}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5" />
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-xs flex items-center justify-center text-destructive-foreground">

@@ -106,70 +106,58 @@ const Referrals = () => {
           <DashboardHeader 
             title="Referral Program" 
             subtitle="Invite friends and earn bonuses"
-          />
-
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Referral Link Card */}
-            <Card variant="glass" className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Share2 className="w-5 h-5 text-primary" />
-                  Your Referral Link
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  {loading ? (
-                    <Skeleton className="h-10 flex-1" />
-                  ) : (
-                    <div className="flex-1 p-3 rounded-lg bg-secondary/50 border border-border font-mono text-sm truncate">
-                      {referralLink}
-                    </div>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={copyToClipboard}
-                    disabled={loading}
-                  >
-                    {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
-                  Share your link with friends. When they sign up and invest, you'll receive a bonus.
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Bonus Withdrawal Card */}
-            <Card variant="glass" className="h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Gift className="w-5 h-5 text-primary" />
-                  Available Bonus
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col justify-between h-full">
-                {loading ? (
-                  <Skeleton className="h-10 w-3/4 mb-4" />
-                ) : (
-                  <div className="text-4xl font-display font-bold text-foreground mb-4">
-                    {formatCurrency(profile?.referral_bonus || 0)}
-                  </div>
-                )}
+            action={
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Available Bonus</p>
+                <p className="text-2xl font-display font-bold text-primary">{formatCurrency(profile?.referral_bonus || 0)}</p>
                 <Button 
                   onClick={handleWithdrawBonus}
                   disabled={isWithdrawing || loading || !profile || profile.referral_bonus <= 0}
-                  className="w-full"
-                  variant="hero"
+                  size="sm"
+                  className="mt-2"
                 >
-                  {isWithdrawing ? <Loader2 className="w-5 h-5 animate-spin" /> : "Withdraw to Available Balance"}
+                  {isWithdrawing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Gift className="w-4 h-4 mr-2" />}
+                  Withdraw Bonus
                 </Button>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            }
+          />
 
-          {/* Stats */}
+                    <div className="grid md:grid-cols-1 gap-6 mb-8">
+                      {/* Referral Link Card */}
+                      <Card variant="glass" className="h-full">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Share2 className="w-5 h-5 text-primary" />
+                            Your Referral Link
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            {loading ? (
+                              <Skeleton className="h-10 flex-1" />
+                            ) : (
+                              <div className="flex-1 p-3 rounded-lg bg-secondary/50 border border-border font-mono text-sm truncate">
+                                {referralLink}
+                              </div>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={copyToClipboard}
+                              disabled={loading}
+                            >
+                              {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                            </Button>
+                          </div>
+                          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
+                            Share your link with friends. When they sign up and invest, you'll receive a bonus.
+                          </div>
+                        </CardContent>
+                      </Card>
+          
+                                          </div>
+          
           <div className="grid md:grid-cols-2 gap-6 mb-8">
             <Card variant="stat">
               <div className="flex items-center gap-4">
@@ -189,7 +177,7 @@ const Referrals = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Bonus Earned (All Time)</p>
-                   {loading ? <Skeleton className="h-7 w-24 mt-1" /> : <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(totalBonusEarned)}</p>}
+                  {loading ? <Skeleton className="h-7 w-24 mt-1" /> : <p className="text-2xl font-display font-bold text-foreground">{formatCurrency(totalBonusEarned)}</p>}
                 </div>
               </div>
             </Card>
@@ -217,13 +205,14 @@ const Referrals = () => {
                           <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                         </TableRow>
                       ))
-                                          ) : referredUsers.length > 0 ? (
-                                          referredUsers.map(user => (
-                                            <TableRow key={user.username}><TableCell>{user.username}</TableCell><TableCell className="text-right">{new Date(user.created_at).toLocaleDateString()}</TableCell></TableRow>
-                                          ))
-                                        ) : (
-                                          <TableRow><TableCell colSpan={2} className="text-center">You haven't referred anyone yet.</TableCell></TableRow>
-                                        )}                  </TableBody>
+                    ) : referredUsers.length > 0 ? (
+                      referredUsers.map(user => (
+                        <TableRow key={user.username}><TableCell>{user.username}</TableCell><TableCell className="text-right">{new Date(user.created_at).toLocaleDateString()}</TableCell></TableRow>
+                      ))
+                    ) : (
+                      <TableRow><TableCell colSpan={2} className="text-center">You haven't referred anyone yet.</TableCell></TableRow>
+                    )}
+                  </TableBody>
                 </Table>
               </CardContent>
             </Card>
@@ -251,13 +240,14 @@ const Referrals = () => {
                           <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                         </TableRow>
                       ))
-                                          ) : bonusHistory.length > 0 ? (
-                                          bonusHistory.map((bonus, i) => (
-                                            <TableRow key={i}><TableCell>{bonus.investor_username}</TableCell><TableCell>{new Date(bonus.investment_date).toLocaleDateString()}</TableCell><TableCell className="text-right text-success font-medium">+{formatCurrency(bonus.bonus_amount)}</TableCell></TableRow>
-                                          ))
-                                        ) : (
-                                          <TableRow><TableCell colSpan={3} className="text-center">No bonuses earned yet.</TableCell></TableRow>
-                                        )}                  </TableBody>
+                    ) : bonusHistory.length > 0 ? (
+                      bonusHistory.map((bonus, i) => (
+                        <TableRow key={i}><TableCell>{bonus.investor_username}</TableCell><TableCell>{new Date(bonus.investment_date).toLocaleDateString()}</TableCell><TableCell className="text-right text-success font-medium">+{formatCurrency(bonus.bonus_amount)}</TableCell></TableRow>
+                      ))
+                    ) : (
+                      <TableRow><TableCell colSpan={3} className="text-center">No bonuses earned yet.</TableCell></TableRow>
+                    )}
+                  </TableBody>
                 </Table>
               </CardContent>
             </Card>
