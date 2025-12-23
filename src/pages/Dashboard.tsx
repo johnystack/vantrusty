@@ -4,6 +4,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatCard from "@/components/dashboard/StatCard";
 import QuickActions from "@/components/dashboard/QuickActions";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import ActiveInvestmentCard from "@/components/dashboard/ActiveInvestmentCard";
 import { Wallet, TrendingUp, Users, DollarSign } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,11 +16,22 @@ interface Profile {
   referral_bonus: number;
 }
 
+interface Investment {
+  amount: number;
+  status: 'pending' | 'active' | 'completed' | 'cancelled';
+  plan_daily_interest_rate: number;
+  plan_duration_days: number;
+  plan_name: string;
+  start_date: string;
+  end_date: string;
+}
+
 const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [totalInvested, setTotalInvested] = useState(0);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [activeInvestments, setActiveInvestments] = useState<Investment[]>([]);
   const [activeInvestmentsCount, setActiveInvestmentsCount] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
 
@@ -34,7 +46,7 @@ const Dashboard = () => {
         // Fetch profile, investments, and referral count in parallel
         const [profileRes, investmentsRes, referralsRes] = await Promise.all([
           supabase.from('profiles').select('full_name, username, available_balance, referral_bonus').eq('id', user.id).single(),
-          supabase.from('investment_details').select('amount, status, plan_daily_interest_rate, plan_duration_days').eq('user_id', user.id),
+          supabase.from('investment_details').select('amount, status, plan_daily_interest_rate, plan_duration_days, plan_name, start_date, end_date').eq('user_id', user.id),
           supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('referred_by', user.id)
         ]);
 
@@ -45,7 +57,7 @@ const Dashboard = () => {
         setProfile(profileRes.data);
         setReferralCount(referralsRes.count || 0);
 
-        const investments = investmentsRes.data || [];
+        const investments: Investment[] = investmentsRes.data || [];
 
         // Calculate stats from investments
         const totalInvestedCalc = investments
@@ -58,8 +70,9 @@ const Dashboard = () => {
           .reduce((acc, inv) => acc + (inv.amount * (inv.plan_daily_interest_rate / 100) * inv.plan_duration_days), 0);
         setTotalEarnings(totalEarningsCalc);
 
-        const activeCount = investments.filter(inv => inv.status === 'active').length;
-        setActiveInvestmentsCount(activeCount);
+        const active = investments.filter(inv => inv.status === 'active');
+        setActiveInvestments(active);
+        setActiveInvestmentsCount(active.length);
 
       } catch (error: any) {
         console.error("Error fetching dashboard data:", error);
@@ -136,12 +149,24 @@ const Dashboard = () => {
           <div className="grid lg:grid-cols-2 gap-8">
             <RecentActivity />
             
-            {/* Active Investments Placeholder */}
             <div className="glass rounded-xl p-6">
               <h3 className="text-lg font-display font-semibold mb-4">Active Investments</h3>
-              <div className="space-y-4 flex flex-col items-center justify-center h-full text-center">
-                 <p className="text-muted-foreground">You have no active investments.</p>
-                 <p className="text-sm text-muted-foreground">Investment plans will appear here once you invest.</p>
+              <div className="space-y-4">
+                {loading ? (
+                  <>
+                    <Skeleton className="h-20 rounded-xl" />
+                    <Skeleton className="h-20 rounded-xl" />
+                  </>
+                ) : activeInvestments.length > 0 ? (
+                  activeInvestments.map((investment, i) => (
+                    <ActiveInvestmentCard key={i} investment={investment} />
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-10">
+                    <p className="text-muted-foreground">You have no active investments.</p>
+                    <p className="text-sm text-muted-foreground">Investment plans will appear here once you invest.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

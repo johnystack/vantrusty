@@ -309,16 +309,6 @@ const AdminInvestmentManagement = () => {
                               <Button variant="ghost" size="icon" onClick={() => setSelectedInvestment(investment)}>
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              {investment.status === "pending" && (
-                                <>
-                                  <Button variant="ghost" size="icon" onClick={() => handleConfirm(investment.id)} className="text-success">
-                                    <Check className="w-4 h-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleReject(investment.id)} className="text-destructive">
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
                               <Button variant="ghost" size="icon" onClick={() => openBonusModal(investment, 'add')}>
                                 <DollarSign className="w-4 h-4 text-success" />
                               </Button>
