@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, MoreVertical, UserCheck, UserX, Mail, Eye } from "lucide-react";
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,36 +20,97 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface UserProfile {
+  id: string;
+  username: string;
+  full_name: string;
+  email: string;
+  role: 'admin' | 'user';
+  status: 'active' | 'suspended';
+  available_balance: number;
+  created_at: string;
+}
 
 const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUser, setSelectedUser] = useState<any | null>(
-    null
-  );
-  const [isBonusDialogOpen, setIsBonusDialogOpen] = useState(false);
-  const [
-    selectedUserForBonus,
-    setSelectedUserForBonus,
-  ] = useState<any | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
-  const filteredUsers: any[] = [];
+  const [isUpdating, setIsUpdating] = useState(false);
 
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const handleAction = (action: string, userId: number) => {
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching users",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (action: 'suspend' | 'activate' | 'email', userId: string) => {
     const user = users.find((u) => u.id === userId);
     if (!user) return;
 
-    if (action === "addBonus" || action === "deductBonus") {
-      setSelectedUserForBonus(user);
-setIsBonusDialogOpen(true);
+    if (action === 'email') {
+      toast({
+        title: `Email action`,
+        description: `Placeholder for sending email to ${user.full_name}`,
+      });
       return;
     }
 
-    toast({
-      title: `${action} action`,
-      description: `Successfully performed ${action} on user ID: ${userId}`,
-    });
+    setIsUpdating(true);
+    const newStatus = action === 'activate' ? 'active' : 'suspended';
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: `User ${action === 'activate' ? 'Activated' : 'Suspended'}`,
+        description: `${user.full_name}'s status has been updated to ${newStatus}.`,
+      });
+      
+      // Refresh the user list to show the new status
+      fetchUsers();
+      setSelectedUser(null); // Close modal if open
+
+    } catch (error: any) {
+      toast({
+        title: `Error updating user`,
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
+
+  const filteredUsers = users.filter(user =>
+    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-background flex w-full">
@@ -65,27 +126,14 @@ setIsBonusDialogOpen(true);
           {/* Search and Filters */}
           <Card variant="glass" className="mb-6">
             <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    All Users
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    Active
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    Suspended
-                  </Button>
-                </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, username, or email..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -100,121 +148,103 @@ setIsBonusDialogOpen(true);
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                        User
-                      </th>
-                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden md:table-cell">
-                        Available Balance
-                      </th>
-                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden lg:table-cell">
-                        Investments
-                      </th>
-                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                        Status
-                      </th>
-                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden sm:table-cell">
-                        KYC
-                      </th>
-                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                        Actions
-                      </th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">User</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden md:table-cell">Balance</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden lg:table-cell">Joined</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Role</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((user) => (
-                      <tr
-                        key={user.id}
-                        className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
-                      >
-                        <td className="py-3 px-2">
-                          <div>
-                            <div className="font-medium text-foreground text-sm">
-                              {user.name}
-                            </div>
-                            <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                              {user.email}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-2 hidden md:table-cell">
-                          <span className="text-sm font-medium text-foreground">
-                            {user.available_balance}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 hidden lg:table-cell">
-                          <span className="text-sm text-muted-foreground">
-                            {user.investments}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2">
-                          <Badge
-                            variant={
-                              user.status === "active" ? "default" : "destructive"
-                            }
-                            className="text-xs"
-                          >
-                            {user.status}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-2 hidden sm:table-cell">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${
-                              user.kyc === "verified"
-                                ? "border-success text-success"
-                                : user.kyc === "pending"
-                                ? "border-warning text-warning"
-                                : "border-destructive text-destructive"
-                            }`}
-                          >
-                            {user.kyc}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              className="glass-strong border-border bg-card"
-                            >
-                              <DropdownMenuItem
-                                onClick={() => setSelectedUser(user)}
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleAction("email", user.id)}
-                              >
-                                <Mail className="w-4 h-4 mr-2" />
-                                Send Email
-                              </DropdownMenuItem>
-                              {user.status === "active" ? (
-                                <DropdownMenuItem
-                                  onClick={() => handleAction("suspend", user.id)}
-                                  className="text-destructive"
-                                >
-                                  <UserX className="w-4 h-4 mr-2" />
-                                  Suspend User
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  onClick={() => handleAction("activate", user.id)}
-                                  className="text-success"
-                                >
-                                  <UserCheck className="w-4 h-4 mr-2" />
-                                  Activate User
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
+                    {loading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={i} className="border-b border-border/50">
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-32" /></td>
+                          <td className="py-3 px-2 hidden md:table-cell"><Skeleton className="h-5 w-20" /></td>
+                          <td className="py-3 px-2 hidden lg:table-cell"><Skeleton className="h-5 w-24" /></td>
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-16" /></td>
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-16" /></td>
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-12" /></td>
+                        </tr>
+                      ))
+                    ) : filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-muted-foreground">No users found.</td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <tr
+                          key={user.id}
+                          className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                        >
+                          <td className="py-3 px-2">
+                            <div>
+                              <div className="font-medium text-foreground text-sm">{user.full_name}</div>
+                              <div className="text-xs text-muted-foreground truncate max-w-[150px]">{user.email}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-2 hidden md:table-cell">
+                            <span className="text-sm font-medium text-foreground">
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(user.available_balance)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 hidden lg:table-cell">
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2">
+                            <Badge variant={user.role === 'admin' ? 'destructive' : 'outline'} className="text-xs capitalize">
+                              {user.role}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-2">
+                            <Badge variant={user.status === 'active' ? 'success' : 'destructive'} className="text-xs capitalize">
+                              {user.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="glass-strong border-border bg-card">
+                                <DropdownMenuItem onClick={() => setSelectedUser(user)} disabled={isUpdating}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleAction("email", user.id)} disabled={isUpdating}>
+                                  <Mail className="w-4 h-4 mr-2" />
+                                  Send Email
+                                </DropdownMenuItem>
+                                {user.status === "active" ? (
+                                  <DropdownMenuItem
+                                    onClick={() => handleAction("suspend", user.id)}
+                                    className="text-destructive"
+                                    disabled={isUpdating}
+                                  >
+                                    <UserX className="w-4 h-4 mr-2" />
+                                    Suspend User
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => handleAction("activate", user.id)}
+                                    className="text-success"
+                                    disabled={isUpdating}
+                                  >
+                                    <UserCheck className="w-4 h-4 mr-2" />
+                                    Activate User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -222,10 +252,7 @@ setIsBonusDialogOpen(true);
           </Card>
 
           {/* User Details Modal */}
-          <Dialog
-            open={!!selectedUser}
-            onOpenChange={() => setSelectedUser(null)}
-          >
+          <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
             <DialogContent className="glass-strong border-border max-w-lg">
               <DialogHeader>
                 <DialogTitle>User Details</DialogTitle>
@@ -237,94 +264,42 @@ setIsBonusDialogOpen(true);
                 <div className="space-y-4 mt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm text-muted-foreground">
-                        Name
-                      </label>
-                      <p className="font-medium text-foreground">
-                        {selectedUser.name}
-                      </p>
+                      <label className="text-sm text-muted-foreground">Full Name</label>
+                      <p className="font-medium text-foreground">{selectedUser.full_name}</p>
+                    </div>
+                     <div>
+                      <label className="text-sm text-muted-foreground">Username</label>
+                      <p className="font-medium text-foreground">{selectedUser.username}</p>
                     </div>
                     <div>
-                      <label className="text-sm text-muted-foreground">
-                        Email
-                      </label>
-                      <p className="font-medium text-foreground text-sm break-all">
-                        {selectedUser.email}
-                      </p>
+                      <label className="text-sm text-muted-foreground">Email</label>
+                      <p className="font-medium text-foreground text-sm break-all">{selectedUser.email}</p>
                     </div>
                     <div>
-                      <label className="text-sm text-muted-foreground">
-                        Available Balance
-                      </label>
-                      <p className="font-medium text-foreground">
-                        {selectedUser.available_balance}
-                      </p>
+                      <label className="text-sm text-muted-foreground">Available Balance</label>
+                      <p className="font-medium text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(selectedUser.available_balance)}</p>
                     </div>
                     <div>
-                      <label className="text-sm text-muted-foreground">
-                        Investments
-                      </label>
-                      <p className="font-medium text-foreground">
-                        {selectedUser.investments}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground">
-                        Status
-                      </label>
-                      <Badge
-                        variant={
-                          selectedUser.status === "active"
-                            ? "default"
-                            : "destructive"
-                        }
-                      >
-                        {selectedUser.status}
-                      </Badge>
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground">
-                        KYC Status
-                      </label>
-                      <Badge variant="outline">{selectedUser.kyc}</Badge>
+                      <label className="text-sm text-muted-foreground">Role</label>
+                      <Badge variant={selectedUser.role === 'admin' ? 'destructive' : 'outline'}>{selectedUser.role}</Badge>
                     </div>
                     <div className="col-span-2">
-                      <label className="text-sm text-muted-foreground">
-                        Joined
-                      </label>
-                      <p className="font-medium text-foreground">
-                        {selectedUser.joined}
-                      </p>
+                      <label className="text-sm text-muted-foreground">Joined</label>
+                      <p className="font-medium text-foreground">{new Date(selectedUser.created_at).toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="flex gap-2 pt-4">
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => handleAction("email", selectedUser.id)}
-                    >
+                    <Button variant="outline" className="flex-1" onClick={() => handleAction("email", selectedUser.id)} disabled={isUpdating}>
                       <Mail className="w-4 h-4 mr-2" />
                       Email
                     </Button>
                     <Button
-                      variant={
-                        selectedUser.status === "active"
-                          ? "destructive"
-                          : "default"
-                      }
+                      variant={selectedUser.status === "active" ? "destructive" : "default"}
                       className="flex-1"
-                      onClick={() =>
-                        handleAction(
-                          selectedUser.status === "active"
-                            ? "suspend"
-                            : "activate",
-                          selectedUser.id
-                        )
-                      }
+                      onClick={() => handleAction(selectedUser.status === "active" ? "suspend" : "activate", selectedUser.id)}
+                      disabled={isUpdating}
                     >
-                      {selectedUser.status === "active"
-                        ? "Suspend"
-                        : "Activate"}
+                      {selectedUser.status === "active" ? "Suspend" : "Activate"}
                     </Button>
                   </div>
                 </div>

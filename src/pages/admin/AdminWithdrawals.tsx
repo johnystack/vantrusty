@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,40 +6,99 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Check, X, Eye, Clock, DollarSign } from "lucide-react";
-import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const withdrawals = [
-  { id: 1, user: "John Doe", email: "john.doe@email.com", amount: "$5,000", method: "Bank Transfer", wallet: "****4521", status: "pending", requestDate: "2024-04-10", processedDate: null },
-  { id: 2, user: "Jane Smith", email: "jane.smith@email.com", amount: "$2,500", method: "Bitcoin", wallet: "bc1q...xyz", status: "pending", requestDate: "2024-04-10", processedDate: null },
-  { id: 3, user: "Mike Wilson", email: "mike.wilson@email.com", amount: "$10,000", method: "USDT", wallet: "0x...abc", status: "approved", requestDate: "2024-04-09", processedDate: "2024-04-10" },
-  { id: 4, user: "Sarah Jones", email: "sarah.jones@email.com", amount: "$1,500", method: "Ethereum", wallet: "0x...def", status: "completed", requestDate: "2024-04-08", processedDate: "2024-04-09" },
-  { id: 5, user: "Alex Brown", email: "alex.brown@email.com", amount: "$3,000", method: "Bank Transfer", wallet: "****8745", status: "rejected", requestDate: "2024-04-07", processedDate: "2024-04-08" },
-];
+interface WithdrawalDetail {
+  id: number;
+  user_id: string;
+  amount: number;
+  wallet_address: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  full_name: string;
+  username: string;
+}
 
 const AdminWithdrawals = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedWithdrawal, setSelectedWithdrawal] = useState<typeof withdrawals[0] | null>(null);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalDetail | null>(null);
   const [filter, setFilter] = useState("all");
 
+  const fetchWithdrawals = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('withdrawal_details')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setWithdrawals(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching withdrawals",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWithdrawals();
+  }, []);
+
+  const handleApprove = async (id: number) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('withdrawals')
+        .update({ status: 'approved' })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast({ title: "Withdrawal Approved", description: `Withdrawal #${id} has been approved.` });
+      fetchWithdrawals();
+      setSelectedWithdrawal(null);
+    } catch (error: any) {
+      toast({ title: "Error Approving Withdrawal", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.rpc('reject_withdrawal', { withdrawal_id_to_reject: id });
+
+      if (error) throw error;
+
+      toast({ title: "Withdrawal Rejected", description: `Withdrawal #${id} has been rejected and funds returned to the user.`, variant: "destructive" });
+      fetchWithdrawals();
+      setSelectedWithdrawal(null);
+    } catch (error: any) {
+      toast({ title: "Error Rejecting Withdrawal", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const filteredWithdrawals = withdrawals.filter(w => {
-    const matchesSearch = w.user.toLowerCase().includes(searchTerm.toLowerCase()) || w.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = w.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || w.username.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === "all" || w.status === filter;
     return matchesSearch && matchesFilter;
   });
 
-  const pendingTotal = withdrawals.filter(w => w.status === "pending").reduce((sum, w) => sum + parseFloat(w.amount.replace(/[$,]/g, "")), 0);
-
-  const handleApprove = (id: number) => {
-    toast({ title: "Withdrawal approved", description: `Withdrawal #${id} has been approved and will be processed.` });
-    setSelectedWithdrawal(null);
-  };
-
-  const handleReject = (id: number) => {
-    toast({ title: "Withdrawal rejected", description: `Withdrawal #${id} has been rejected.`, variant: "destructive" });
-    setSelectedWithdrawal(null);
-  };
+  const pendingTotal = withdrawals.filter(w => w.status === "pending").reduce((sum, w) => sum + w.amount, 0);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -70,7 +130,7 @@ const AdminWithdrawals = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card variant="glass">
               <CardContent className="p-4">
-                <div className="flex items-center gap-3">
+                {loading ? <Skeleton className="h-16" /> : <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-warning/20">
                     <Clock className="w-5 h-5 text-warning" />
                   </div>
@@ -78,12 +138,12 @@ const AdminWithdrawals = () => {
                     <p className="text-sm text-muted-foreground">Pending</p>
                     <p className="text-xl font-display font-bold text-foreground">{withdrawals.filter(w => w.status === "pending").length}</p>
                   </div>
-                </div>
+                </div>}
               </CardContent>
             </Card>
             <Card variant="glass">
               <CardContent className="p-4">
-                <div className="flex items-center gap-3">
+                {loading ? <Skeleton className="h-16" /> : <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/20">
                     <DollarSign className="w-5 h-5 text-primary" />
                   </div>
@@ -91,25 +151,25 @@ const AdminWithdrawals = () => {
                     <p className="text-sm text-muted-foreground">Pending Amount</p>
                     <p className="text-xl font-display font-bold text-foreground">${pendingTotal.toLocaleString()}</p>
                   </div>
-                </div>
+                </div>}
               </CardContent>
             </Card>
             <Card variant="glass">
               <CardContent className="p-4">
-                <div className="flex items-center gap-3">
+                {loading ? <Skeleton className="h-16" /> : <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-success/20">
                     <Check className="w-5 h-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Completed</p>
-                    <p className="text-xl font-display font-bold text-foreground">{withdrawals.filter(w => w.status === "completed").length}</p>
+                    <p className="text-sm text-muted-foreground">Approved</p>
+                    <p className="text-xl font-display font-bold text-foreground">{withdrawals.filter(w => w.status === "approved").length}</p>
                   </div>
-                </div>
+                </div>}
               </CardContent>
             </Card>
             <Card variant="glass">
               <CardContent className="p-4">
-                <div className="flex items-center gap-3">
+                {loading ? <Skeleton className="h-16" /> : <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-destructive/20">
                     <X className="w-5 h-5 text-destructive" />
                   </div>
@@ -117,7 +177,7 @@ const AdminWithdrawals = () => {
                     <p className="text-sm text-muted-foreground">Rejected</p>
                     <p className="text-xl font-display font-bold text-foreground">{withdrawals.filter(w => w.status === "rejected").length}</p>
                   </div>
-                </div>
+                </div>}
               </CardContent>
             </Card>
           </div>
@@ -129,14 +189,14 @@ const AdminWithdrawals = () => {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search withdrawals..."
+                    placeholder="Search by user name or username..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {["all", "pending", "approved", "completed", "rejected"].map((status) => (
+                  {["all", "pending", "approved", "rejected"].map((status) => (
                     <Button
                       key={status}
                       variant={filter === status ? "outline" : "ghost"}
@@ -164,44 +224,50 @@ const AdminWithdrawals = () => {
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">User</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Amount</th>
-                      <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden sm:table-cell">Method</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground hidden md:table-cell">Date</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
                       <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredWithdrawals.map((withdrawal) => (
+                    {loading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={i} className="border-b border-border/50">
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-32" /></td>
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-24" /></td>
+                          <td className="py-3 px-2 hidden md:table-cell"><Skeleton className="h-5 w-28" /></td>
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-20" /></td>
+                          <td className="py-3 px-2"><Skeleton className="h-5 w-20" /></td>
+                        </tr>
+                      ))
+                    ) : filteredWithdrawals.map((withdrawal) => (
                       <tr key={withdrawal.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                         <td className="py-3 px-2">
                           <div>
-                            <div className="font-medium text-foreground text-sm">{withdrawal.user}</div>
-                            <div className="text-xs text-muted-foreground hidden sm:block truncate max-w-[120px]">{withdrawal.email}</div>
+                            <div className="font-medium text-foreground text-sm">{withdrawal.full_name}</div>
+                            <div className="text-xs text-muted-foreground hidden sm:block truncate max-w-[120px]">{withdrawal.username}</div>
                           </div>
                         </td>
                         <td className="py-3 px-2">
-                          <span className="text-sm font-medium text-foreground">{withdrawal.amount}</span>
-                        </td>
-                        <td className="py-3 px-2 hidden sm:table-cell">
-                          <span className="text-sm text-muted-foreground">{withdrawal.method}</span>
+                          <span className="text-sm font-medium text-foreground">${withdrawal.amount.toLocaleString()}</span>
                         </td>
                         <td className="py-3 px-2 hidden md:table-cell">
-                          <span className="text-sm text-muted-foreground">{withdrawal.requestDate}</span>
+                          <span className="text-sm text-muted-foreground">{new Date(withdrawal.created_at).toLocaleDateString()}</span>
                         </td>
                         <td className="py-3 px-2">
                           {getStatusBadge(withdrawal.status)}
                         </td>
                         <td className="py-3 px-2">
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => setSelectedWithdrawal(withdrawal)}>
+                            <Button variant="ghost" size="icon" onClick={() => setSelectedWithdrawal(withdrawal)} disabled={isUpdating}>
                               <Eye className="w-4 h-4" />
                             </Button>
                             {withdrawal.status === "pending" && (
                               <>
-                                <Button variant="ghost" size="icon" onClick={() => handleApprove(withdrawal.id)} className="text-success">
+                                <Button variant="ghost" size="icon" onClick={() => handleApprove(withdrawal.id)} className="text-success" disabled={isUpdating}>
                                   <Check className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleReject(withdrawal.id)} className="text-destructive">
+                                <Button variant="ghost" size="icon" onClick={() => handleReject(withdrawal.id)} className="text-destructive" disabled={isUpdating}>
                                   <X className="w-4 h-4" />
                                 </Button>
                               </>
@@ -228,27 +294,23 @@ const AdminWithdrawals = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-muted-foreground">User</label>
-                      <p className="font-medium text-foreground">{selectedWithdrawal.user}</p>
+                      <p className="font-medium text-foreground">{selectedWithdrawal.full_name}</p>
                     </div>
                     <div>
-                      <label className="text-sm text-muted-foreground">Email</label>
-                      <p className="font-medium text-foreground text-sm break-all">{selectedWithdrawal.email}</p>
+                      <label className="text-sm text-muted-foreground">Username</label>
+                      <p className="font-medium text-foreground">@{selectedWithdrawal.username}</p>
                     </div>
                     <div>
                       <label className="text-sm text-muted-foreground">Amount</label>
-                      <p className="font-medium text-foreground text-lg">{selectedWithdrawal.amount}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground">Method</label>
-                      <p className="font-medium text-foreground">{selectedWithdrawal.method}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-sm text-muted-foreground">Wallet/Account</label>
-                      <p className="font-medium text-foreground font-mono text-sm">{selectedWithdrawal.wallet}</p>
+                      <p className="font-medium text-foreground text-lg">${selectedWithdrawal.amount.toLocaleString()}</p>
                     </div>
                     <div>
                       <label className="text-sm text-muted-foreground">Request Date</label>
-                      <p className="font-medium text-foreground">{selectedWithdrawal.requestDate}</p>
+                      <p className="font-medium text-foreground">{new Date(selectedWithdrawal.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-sm text-muted-foreground">Wallet Address</label>
+                      <p className="font-medium text-foreground font-mono text-sm break-all">{selectedWithdrawal.wallet_address}</p>
                     </div>
                     <div>
                       <label className="text-sm text-muted-foreground">Status</label>
@@ -257,11 +319,11 @@ const AdminWithdrawals = () => {
                   </div>
                   {selectedWithdrawal.status === "pending" && (
                     <div className="flex gap-2 pt-4">
-                      <Button variant="default" className="flex-1 bg-success hover:bg-success/90" onClick={() => handleApprove(selectedWithdrawal.id)}>
+                      <Button variant="default" className="flex-1 bg-success hover:bg-success/90" onClick={() => handleApprove(selectedWithdrawal.id)} disabled={isUpdating}>
                         <Check className="w-4 h-4 mr-2" />
                         Approve
                       </Button>
-                      <Button variant="destructive" className="flex-1" onClick={() => handleReject(selectedWithdrawal.id)}>
+                      <Button variant="destructive" className="flex-1" onClick={() => handleReject(selectedWithdrawal.id)} disabled={isUpdating}>
                         <X className="w-4 h-4 mr-2" />
                         Reject
                       </Button>

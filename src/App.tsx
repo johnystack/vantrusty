@@ -103,7 +103,7 @@ const App = () => {
       if (session) {
         supabase.from('profiles').select('role').eq('id', session.user.id).single()
           .then(({ data: profileData, error }) => {
-            if (error) {
+            if (error && error.code !== 'PGRST116') {
               console.error("Error fetching user profile on auth change:", error);
               setUserRole(null);
             } else if (profileData) {
