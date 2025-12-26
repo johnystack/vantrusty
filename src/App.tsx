@@ -11,6 +11,7 @@ import { supabase } from "./lib/supabaseClient";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import LegalPage from "./pages/Legal";
 import NotFound from "./pages/NotFound";
 
 // Dashboard Pages
@@ -138,6 +139,7 @@ const App = () => {
             <Route path="/" element={<Index />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/dashboard" />} />
             <Route path="/signup" element={<SignupRoute session={session} />} />
+            <Route path="/legal" element={<LegalPage />} />
 
             {/* Protected Dashboard Routes */}
             <Route

@@ -20,7 +20,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
   { icon: Users, label: "User Management", path: "/admin/users" },
   { icon: TrendingUp, label: "Investment Management", path: "/admin/investments" },
-  { icon: Upload, label: "Withdrawals", path: "/admin/withdrawals" },
+  { icon: Download, label: "Withdrawals", path: "/admin/withdrawals" },
   { icon: Coins, label: "Cryptocurrency", path: "/admin/crypto" },
   { icon: ShieldCheck, label: "KYC Verification", path: "/admin/kyc" },
   { icon: FileText, label: "Reports", path: "/admin/reports" },

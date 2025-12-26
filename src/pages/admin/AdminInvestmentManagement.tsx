@@ -125,6 +125,10 @@ const AdminInvestmentManagement = () => {
   };
 
   const openBonusModal = (investment: Investment, action: 'add' | 'deduct') => {
+    if (investment.status === 'pending') {
+      toast({ title: "Action not allowed", description: "Cannot adjust bonus for a pending investment.", variant: "destructive" });
+      return;
+    }
     setInvestmentForBonus(investment);
     setBonusAction(action);
     setBonusAdjustment(0);
@@ -133,6 +137,11 @@ const AdminInvestmentManagement = () => {
   const handleAdjustBonus = async () => {
     if (!investmentForBonus || bonusAdjustment === 0) {
       toast({ title: "No adjustment specified", description: "Please enter a non-zero amount.", variant: "destructive" });
+      return;
+    }
+
+    if (bonusAction === 'deduct' && bonusAdjustment > investmentForBonus.bonus) {
+      toast({ title: "Invalid amount", description: "Cannot deduct more than the current bonus.", variant: "destructive" });
       return;
     }
 
